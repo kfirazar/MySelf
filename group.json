@@ -1,19 +1,15 @@
 {
-    "b97be3e4-ad1d-4cc3-9582-d612081a6679": {
+    "da554120-aca0-4549-b70e-f7f7ff58d5f9": {
         "name": "Group 1",
-        "description": "This is the first group"
-    },
-    "380a5014-ba64-44cf-b595-d736ed1e5de2": {
-        "name": "Group 2",
-        "description": "This is the second group"
-    },
-    "ea714309-887f-4775-8a41-fcc94b3d50f8": {
-        "name": "Group 1",
+        "type": "group",
+        "tasks": [],
         "description": "This is the first group",
         "category": "A"
     },
-    "7e80b340-3a15-4b28-9d01-1e83f5120380": {
+    "c283e4e0-2457-4dab-a875-42474e82450e": {
         "name": "Group 2",
+        "type": "group",
+        "tasks": [],
         "description": "This is the second group"
     }
 }
