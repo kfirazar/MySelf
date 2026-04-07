@@ -1,0 +1,10 @@
+{
+    "8cec57fb-903b-420f-a849-dd7c288fbdfc": {
+        "id": "8cec57fb-903b-420f-a849-dd7c288fbdfc",
+        "name": "Task 1",
+        "group_id": "56d7f760-2f1f-4ba1-88ea-3502e4301ecc",
+        "type": "task",
+        "description": "This is the first task",
+        "priority": "High"
+    }
+}

@@ -1,15 +1,11 @@
 import json
+import os
 import inner_function
+import config
+
+DB_DIR = config.get_db_dir()
 
 
-# This function creates a JSON file with the specified filename and initializes it with an empty dictionary.
-def create_json_file(filename='group.json'):
-    data = {
-       
-    }
-    
-    with open(filename, 'w') as json_file:
-        json.dump(data, json_file, indent=4)
 
 
 # This function create a group instance with at least a name and a randomy generated id.
@@ -28,7 +24,7 @@ def create_group_object(group_name, **kwargs):
     return group_object
 
 # This function creates a task and adds it to the specified group object.
-def create_task_object(group_id, task_name, filename='group.json', **kwargs):
+def create_task_object(group_id, task_name, filename='task.json', **kwargs):
     task_id = inner_function.generate_random_id()
     task_object = {
         "id": task_id,
@@ -38,9 +34,10 @@ def create_task_object(group_id, task_name, filename='group.json', **kwargs):
         **kwargs
     }
     
+    file_path = inner_function.db_file_path(filename)
     # Load data
     try:
-        with open(filename, 'r') as json_file:
+        with open(file_path, 'r') as json_file:
             data = json.load(json_file)
     except FileNotFoundError:
         data = {}
@@ -53,17 +50,19 @@ def create_task_object(group_id, task_name, filename='group.json', **kwargs):
         data[group_id]["tasks"].append(task_id)
     
     # Save data
-    with open(filename, 'w') as json_file:
+    with open(file_path, 'w') as json_file:
         json.dump(data, json_file, indent=4)
     
     return task_object
 
 
+
 # This function retrieves the group object from the JSON file based on the provided group name.
 # Can return several group objects if there are multiple groups with the same name.
 def get_group_object(group_name, filename='group.json'):
+    file_path = inner_function.db_file_path(filename)
     try:
-        with open(filename, 'r') as json_file:
+        with open(file_path, 'r') as json_file:
             data = json.load(json_file)
     except FileNotFoundError:
         return []
@@ -88,8 +87,9 @@ def remove_fields_from_object(obj, *args):
 # All valadiation will occurs ahead of the function in other logic secton
 # The "id" of the wanted ovbject will be given as a parameter
 def save_object_to_json_file(object_to_save, object_id, filename):
+    file_path = inner_function.db_file_path(filename)
     try:
-        with open(filename, 'r') as json_file:
+        with open(file_path, 'r') as json_file:
             data = json.load(json_file)
     except FileNotFoundError:
         data = {}
@@ -104,19 +104,10 @@ def save_object_to_json_file(object_to_save, object_id, filename):
         data[object_id] = object_to_save
 
     # Write the updated data back to the JSON file
-    with open(filename, 'w') as json_file:
+    with open(file_path, 'w') as json_file:
         json.dump(data, json_file, indent=4)
 
 
 
     
 
-g1 = create_group_object("Group 1", description="This is the first group",category="A")
-g1_id = g1["id"]
-g1 = remove_fields_from_object(g1, "id")
-save_object_to_json_file(g1, g1_id, 'group.json')
-
-g2 = create_group_object("Group 2", description="This is the second group")
-g2_id = g2["id"]
-g2 = remove_fields_from_object(g2, "id")
-save_object_to_json_file(g2, g2_id, 'group.json')
