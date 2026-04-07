@@ -12,7 +12,7 @@ DB_DIR = config.get_db_dir()
 # The function can also accept additional parameters, which can be used to customize the group object further.
 # For time complexity, the ids will be keys in the JSON file, so we can directly access the group object using its unique ID without needing to loop through the entire file. This allows for efficient retrieval and updating of group objects based on their unique IDs.
 def create_group_object(group_name, **kwargs):
-    group_id = inner_function.generate_virtual_id(group_name)
+    group_id = inner_function.generate_random_id()
     group_object = {
         "id": group_id,
         "name": group_name,
@@ -45,13 +45,28 @@ def create_task_object(group_id, task_name, filename='task.json', **kwargs):
     # Add task to data
     data[task_id] = task_object
     
-    # Add task_id to group's tasks list
-    if group_id in data and data[group_id].get("type") == "group":
-        data[group_id]["tasks"].append(task_id)
-    
-    # Save data
+    # Save task data
     with open(file_path, 'w') as json_file:
         json.dump(data, json_file, indent=4)
+    
+    # Update the group's tasks list in group.json
+    group_file_path = inner_function.db_file_path('group.json')
+    try:
+        with open(group_file_path, 'r') as json_file:
+            group_data = json.load(json_file)
+    except FileNotFoundError:
+        group_data = {}
+    
+    # Find the group and add the task_id to its tasks list
+    if group_id in group_data and group_data[group_id].get("type") == "group":
+        if "tasks" not in group_data[group_id]:
+            group_data[group_id]["tasks"] = []
+        group_data[group_id]["tasks"].append(task_id)
+        
+        # Save updated group data
+        with open(group_file_path, 'w') as json_file:
+            json.dump(group_data, json_file, indent=4)
+    
     
     return task_object
 
@@ -59,19 +74,7 @@ def create_task_object(group_id, task_name, filename='task.json', **kwargs):
 
 # This function retrieves the group object from the JSON file based on the provided group name.
 # Can return several group objects if there are multiple groups with the same name.
-def get_group_object(group_name, filename='group.json'):
-    file_path = inner_function.db_file_path(filename)
-    try:
-        with open(file_path, 'r') as json_file:
-            data = json.load(json_file)
-    except FileNotFoundError:
-        return []
-    
-    # Filter the group objects based on the provided group name
-    group_objects = [group for group in data.values() if group.get("name") == group_name and group.get("type") == "group"]
-    
-    return group_objects
-
+# The extraction of the group name will 
 
 
 # This function removes specific fields from the given object dictionary
@@ -110,4 +113,3 @@ def save_object_to_json_file(object_to_save, object_id, filename):
 
 
     
-

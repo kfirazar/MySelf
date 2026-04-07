@@ -20,29 +20,6 @@ def generate_random_id():
     return str(uuid.uuid4())
 
 
-# This function get a common group name and generates a unique virtual ID.
-# This Virtual ID is used for id for group objects.
-# The mapping is getting saved in the virtual_address.json file, which is a dictionary that maps the common group name to the generated virtual ID.
-def generate_virtual_id(group_name):
-    file_path = os.path.join(DB_DIR, 'virtual_address.json')
-    try:
-        with open(file_path, 'r') as json_file:
-            virtual_address = json.load(json_file)
-    except FileNotFoundError:
-        virtual_address = {}
-    
-    if group_name in virtual_address:
-        return virtual_address[group_name]
-    else:
-        virtual_id = generate_random_id()
-        virtual_address[group_name] = virtual_id
-        
-        with open(file_path, 'w') as json_file:
-            json.dump(virtual_address, json_file, indent=4)
-        
-        return virtual_id
-
-
 #This function reset ALL files in the DB directory, it will delete all files in the DB directory and create new empty files for group and task.
 
 def reset_db():
