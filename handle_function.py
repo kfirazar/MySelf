@@ -46,13 +46,13 @@ def create_task_object(group_id, task_name, filename='task.json', **kwargs):
     data[task_id] = task_object
     
     # Save task data
-    with open(file_path, 'w') as json_file:
-        json.dump(data, json_file, indent=4)
+    with open(file_path, 'w', encoding='utf-8') as json_file:
+        json.dump(data, json_file, indent=4, ensure_ascii=False)
     
     # Update the group's tasks list in group.json
     group_file_path = inner_function.db_file_path('group.json')
     try:
-        with open(group_file_path, 'r') as json_file:
+        with open(group_file_path, 'r', encoding='utf-8') as json_file:
             group_data = json.load(json_file)
     except FileNotFoundError:
         group_data = {}
@@ -64,17 +64,49 @@ def create_task_object(group_id, task_name, filename='task.json', **kwargs):
         group_data[group_id]["tasks"].append(task_id)
         
         # Save updated group data
-        with open(group_file_path, 'w') as json_file:
-            json.dump(group_data, json_file, indent=4)
+        with open(group_file_path, 'w', encoding='utf-8') as json_file:
+            json.dump(group_data, json_file, indent=4, ensure_ascii=False)
     
     
     return task_object
 
 
 
-# This function retrieves the group object from the JSON file based on the provided group name.
-# Can return several group objects if there are multiple groups with the same name.
-# The extraction of the group name will 
+
+def load_json_file(filename):
+    file_path = inner_function.db_file_path(filename)
+    try:
+        with open(file_path, 'r', encoding='utf-8') as json_file:
+            return json.load(json_file)
+    except FileNotFoundError:
+        return {}
+
+
+def get_all_groups():
+    data = load_json_file('group.json')
+    groups = []
+    for fallback_index, (group_id, group_data) in enumerate(data.items()):
+        groups.append({
+            'id': group_id,
+            '_fallback_order': fallback_index,
+            **group_data
+        })
+
+    groups.sort(
+        key=lambda group: (
+            group.get('order') if isinstance(group.get('order'), int) else group.get('_fallback_order', 0)
+        )
+    )
+
+    for group in groups:
+        group.pop('_fallback_order', None)
+
+    return groups
+
+
+def get_all_tasks():
+    data = load_json_file('task.json')
+    return [{'id': k, **v} for k, v in data.items()]
 
 
 # This function removes specific fields from the given object dictionary
@@ -92,7 +124,7 @@ def remove_fields_from_object(obj, *args):
 def save_object_to_json_file(object_to_save, object_id, filename):
     file_path = inner_function.db_file_path(filename)
     try:
-        with open(file_path, 'r') as json_file:
+        with open(file_path, 'r', encoding='utf-8') as json_file:
             data = json.load(json_file)
     except FileNotFoundError:
         data = {}
@@ -107,8 +139,8 @@ def save_object_to_json_file(object_to_save, object_id, filename):
         data[object_id] = object_to_save
 
     # Write the updated data back to the JSON file
-    with open(file_path, 'w') as json_file:
-        json.dump(data, json_file, indent=4)
+    with open(file_path, 'w', encoding='utf-8') as json_file:
+        json.dump(data, json_file, indent=4, ensure_ascii=False)
 
 
 

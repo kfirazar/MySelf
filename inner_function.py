@@ -44,8 +44,8 @@ def create_json_file(filename):
     }
     
     file_path = db_file_path(filename)
-    with open(file_path, 'w') as json_file:
-        json.dump(data, json_file, indent=4)
+    with open(file_path, 'w', encoding='utf-8') as json_file:
+        json.dump(data, json_file, indent=4, ensure_ascii=False)
 
 
 

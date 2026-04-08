@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Board</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.4/css/all.min.css" rel="stylesheet" />
+    <style>
+        body {
+            background: #eef2ff;
+            color: #1f2937;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            direction: rtl;
+        }
+        .page-header {
+            padding: 1.5rem 0 1rem;
+        }
+        .modal-header {
+            direction: ltr;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+        .modal-header .btn-close {
+            margin: 0;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .toolbar-left {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        .toolbar-right {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        .board-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .group-panel {
+            width: 100%;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+        }
+        .group-header {
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #4f46e5, #3b82f6);
+            color: white;
+        }
+        .group-title {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+        .group-title[contenteditable="true"] {
+            display: inline-block;
+            min-width: 80px;
+            padding: 0.1rem 0.2rem;
+            border-radius: 0.4rem;
+            outline: none;
+        }
+        .group-title[contenteditable="true"]:focus {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+        }
+        .group-count {
+            background: rgba(255,255,255,0.16);
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+        }
+        .drag-group-handle {
+            width: 2rem;
+            height: 2rem;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: grab;
+            transition: transform 120ms ease, background 120ms ease;
+        }
+        .drag-group-handle:hover {
+            transform: scale(1.05);
+            background: rgba(255,255,255,0.32);
+        }
+        .drag-group-handle:active {
+            cursor: grabbing;
+        }
+        body.group-dragging .drag-group-handle {
+            cursor: grabbing;
+        }
+        .group-panel.dragging-group {
+            opacity: 0.45;
+            transform: scale(0.985);
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
+        }
+        .group-panel.group-drop-before::before,
+        .group-panel.group-drop-after::after {
+            content: '';
+            position: absolute;
+            inset-inline: 14px;
+            height: 4px;
+            border-radius: 999px;
+            background: #60a5fa;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7), 0 2px 10px rgba(37, 99, 235, 0.35);
+            pointer-events: none;
+        }
+        .group-panel.group-drop-before::before {
+            top: -2px;
+        }
+        .group-panel.group-drop-after::after {
+            bottom: -2px;
+        }
+        .group-panel.group-drop-before,
+        .group-panel.group-drop-after {
+            box-shadow: 0 20px 50px rgba(59, 130, 246, 0.18);
+        }
+        .group-drag-ghost {
+            opacity: 0.92;
+            transform: rotate(-0.4deg);
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.22);
+        }
+        .collapse-icon {
+            width: 2rem;
+            height: 2rem;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+        }
+        .task-table {
+            overflow-x: auto;
+        }
+        table {
+            min-width: 740px;
+            width: max-content;
+        }
+        thead {
+            background: #f8fafc;
+        }
+        th {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #4b5563;
+            white-space: nowrap;
+            position: relative;
+        }
+        td {
+            vertical-align: middle;
+            border-top: 1px solid #e5e7eb;
+            padding: 0.85rem 0.75rem;
+            font-size: 0.92rem;
+        }
+        th[data-field-name],
+        td[data-field-name] {
+            min-width: 120px;
+        }
+        .field-name-editor {
+            display: block;
+            outline: none;
+            padding-inline-end: 0.75rem;
+        }
+        .column-resizer {
+            position: absolute;
+            inset-inline-end: -4px;
+            top: 0;
+            width: 8px;
+            height: 100%;
+            cursor: col-resize;
+            user-select: none;
+            z-index: 5;
+        }
+        .column-resizer::after {
+            content: '';
+            position: absolute;
+            inset-inline-start: 3px;
+            top: 20%;
+            width: 2px;
+            height: 60%;
+            background: #d1d5db;
+            border-radius: 99px;
+        }
+        body.resizing-columns * {
+            cursor: col-resize !important;
+            user-select: none !important;
+        }
+        .task-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .task-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .task-name {
+            font-weight: 600;
+            color: #111827;
+        }
+        .task-meta {
+            color: #6b7280;
+            font-size: 0.83rem;
+        }
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+        .status-backlog { background: #f8fafc; color: #475569; }
+        .status-in-progress { background: #e0f2fe; color: #075985; }
+        .status-complete { background: #dcfce7; color: #166534; }
+        .priority-high { color: #b91c1c; font-weight: 700; }
+        .priority-medium { color: #d97706; font-weight: 700; }
+        .priority-low { color: #15803d; font-weight: 700; }
+        .icon-row {
+            display: flex;
+            gap: 0.75rem;
+            color: #64748b;
+        }
+        .toolbar .btn {
+            border-radius: 999px;
+        }
+        .small-badge {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #1d4ed8;
+            border: 1px solid #dbeafe;
+        }
+        .empty-state {
+            padding: 2rem;
+            text-align: center;
+            color: #64748b;
+        }
+        .blurry-row {
+            opacity: 0.6;
+            background: #f0f4f8;
+        }
+        .blurry-row td {
+            color: #9ca3af;
+            padding: 1rem 0.75rem !important;
+        }
+        .add-task-btn {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <header class="page-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-1">Task Board</h1>
+                    <p class="text-muted mb-0">Global toolbar for the whole board: search, filter, sort, group by and task actions.</p>
+                </div>
+            </div>
+        </header>
+        
+        <section class="toolbar px-0 px-md-2 mb-4">
+            <div class="toolbar-left">
+                <button class="btn btn-primary" onclick="openGroupModal();">
+                    <i class="fa-solid fa-plus me-2"></i>New Group
+                </button>
+                <div class="input-group" style="min-width: 260px;">
+                    <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input id="searchInput" type="text" class="form-control" placeholder="Search tasks..." oninput="refreshBoard()" />
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <button class="btn btn-outline-secondary"><i class="fa-solid fa-user"></i>Person</button>
+                <button class="btn btn-outline-secondary"><i class="fa-solid fa-filter"></i>Filter</button>
+                <button class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-up-wide-short"></i>Sort</button>
+                <button class="btn btn-outline-secondary"><i class="fa-solid fa-eye-slash"></i>Hide</button>
+                <button class="btn btn-outline-secondary"><i class="fa-solid fa-layer-group"></i>Group by</button>
+            </div>
+        </section>
+
+        <section id="boardSection" class="board-container"></section>
+    </div>
+
+    <div class="modal fade" id="createTaskModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title"><i class="fa-solid fa-plus"></i> Create New Task</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Task Name</label>
+                        <input id="newTaskName" type="text" class="form-control" placeholder="Enter task name" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Group</label>
+                        <select id="newTaskGroup" class="form-select"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Owner</label>
+                        <input id="newTaskOwner" type="text" class="form-control" placeholder="Enter owner" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <input id="newTaskCategory" type="text" class="form-control" placeholder="Enter category" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Priority</label>
+                        <select id="newTaskPriority" class="form-select">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createNewTask()">Save task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="createGroupModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title"><i class="fa-solid fa-folder-plus"></i> Create New Group</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Group Name</label>
+                        <input id="newGroupName" type="text" class="form-control" placeholder="Enter group name" required />
+                        <div id="newGroupNameError" class="invalid-feedback">Group name is required.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea id="newGroupDescription" class="form-control" rows="3" placeholder="Group description"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status tag</label>
+                        <input id="newGroupCategory" type="text" class="form-control" placeholder="Category or tag" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button id="saveGroupBtn" type="button" class="btn btn-primary" onclick="createNewGroup()" disabled>Save group</button>
+                </div>
+                
+            </div>
+        </div>
+        
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const columnWidthsByGroup = {};
+        let draggingGroupId = null;
+        let groupDragGhost = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeCreateGroupForm();
+            refreshBoard();
+        });
+
+
+
+        // The following code is meant for extracting and refreasghing the data from the server, and then render it in the client side by following the group header and then render the data accordingly.
+        async function refreshBoard() {
+            const groups = await loadGroups();
+            const tasks = await loadTasks();
+            renderBoard(groups, tasks);
+        }
+
+        async function loadGroups() {
+            const response = await fetch('/api/groups');
+            return response.ok ? await response.json() : [];
+        }
+
+        async function loadTasks() {
+            const response = await fetch('/api/tasks');
+            return response.ok ? await response.json() : [];
+        }
+
+
+        function toggleGroup(button) {
+            const panel = button.closest('.group-panel');
+            const content = panel.querySelector('.task-table');
+            const icon = button.querySelector('i');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            } else {
+                content.style.display = 'none';
+                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            }
+        }
+        function openTaskModal() {
+            const modal = new bootstrap.Modal(document.getElementById('createTaskModal'));
+            loadGroupOptions();
+            modal.show();
+        }
+
+        function openGroupModal() {
+            const modalElement = document.getElementById('createGroupModal');
+            const modal = new bootstrap.Modal(modalElement);
+            resetCreateGroupForm();
+            modal.show();
+            const nameInput = document.getElementById('newGroupName');
+            nameInput.focus();
+        }
+
+        function getCreateGroupPayload() {
+            return {
+                name: document.getElementById('newGroupName').value.trim(),
+                description: document.getElementById('newGroupDescription').value.trim(),
+                category: document.getElementById('newGroupCategory').value.trim()
+            };
+        }
+
+        function setGroupNameValidity(showError = false) {
+            const nameInput = document.getElementById('newGroupName');
+            const saveButton = document.getElementById('saveGroupBtn');
+            const isValid = nameInput.value.trim().length > 0;
+
+            nameInput.classList.toggle('is-invalid', showError && !isValid);
+            saveButton.disabled = !isValid;
+
+            return isValid;
+        }
+
+        function resetCreateGroupForm() {
+            document.getElementById('newGroupName').value = '';
+            document.getElementById('newGroupDescription').value = '';
+            document.getElementById('newGroupCategory').value = '';
+            setGroupNameValidity(false);
+        }
+
+        function initializeCreateGroupForm() {
+            const modalElement = document.getElementById('createGroupModal');
+            const nameInput = document.getElementById('newGroupName');
+
+            nameInput.addEventListener('input', () => setGroupNameValidity(false));
+            nameInput.addEventListener('blur', () => setGroupNameValidity(true));
+            modalElement.addEventListener('hidden.bs.modal', resetCreateGroupForm);
+            setGroupNameValidity(false);
+        }
+
+        async function createNewGroup() {
+            const nameInput = document.getElementById('newGroupName');
+            if (!setGroupNameValidity(true)) {
+                nameInput.focus();
+                return;
+            }
+
+            const payload = getCreateGroupPayload();
+            const response = await fetch('/api/create_group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                setGroupNameValidity(true);
+                return;
+            }
+
+            resetCreateGroupForm();
+
+            const modalElement = document.getElementById('createGroupModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+
+            refreshBoard();
+        }
+
+
+        function renderBoard(groups, tasks) {
+            const board = document.getElementById('boardSection');
+            if (!groups.length) {
+                board.innerHTML = '<div class="empty-state">No groups yet. Create a group to begin.</div>';
+                return;
+            }
+
+            const taskMap = tasks.reduce((acc, task) => {
+                acc[task.group_id] = acc[task.group_id] || [];
+                acc[task.group_id].push(task);
+                return acc;
+            }, {});
+
+            board.innerHTML = groups.map(group => createTable(group, taskMap[group.id] || [])).join('');
+            applyStoredColumnWidths();
+        }
+
+        function clearGroupDropTargets() {
+            document.querySelectorAll('.group-panel.group-drop-before, .group-panel.group-drop-after').forEach(panel => {
+                panel.classList.remove('group-drop-before', 'group-drop-after');
+            });
+        }
+
+        function handleGroupDragStart(event) {
+            const groupId = event.currentTarget.dataset.groupId;
+            if (!groupId) return;
+
+            draggingGroupId = groupId;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', groupId);
+            document.body.classList.add('group-dragging');
+
+            const sourcePanel = document.querySelector(`.group-panel[data-group-id="${groupId}"]`);
+            if (sourcePanel) {
+                sourcePanel.classList.add('dragging-group');
+
+                // A custom ghost gives smoother visual feedback while dragging.
+                groupDragGhost = sourcePanel.cloneNode(true);
+                groupDragGhost.classList.add('group-drag-ghost');
+                groupDragGhost.style.width = `${sourcePanel.getBoundingClientRect().width}px`;
+                groupDragGhost.style.position = 'absolute';
+                groupDragGhost.style.top = '-9999px';
+                groupDragGhost.style.left = '-9999px';
+                document.body.appendChild(groupDragGhost);
+                event.dataTransfer.setDragImage(groupDragGhost, 24, 24);
+            }
+        }
+
+        function handleGroupDragOver(event) {
+            if (!draggingGroupId) return;
+
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+
+            const targetPanel = event.currentTarget;
+            if (targetPanel.dataset.groupId === draggingGroupId) return;
+
+            const targetRect = targetPanel.getBoundingClientRect();
+            const placeAfterTarget = event.clientY > (targetRect.top + targetRect.height / 2);
+            const nextClass = placeAfterTarget ? 'group-drop-after' : 'group-drop-before';
+
+            if (targetPanel.classList.contains(nextClass)) return;
+
+            clearGroupDropTargets();
+            targetPanel.classList.add(nextClass);
+        }
+
+        function handleGroupDragLeave(event) {
+            const nextElement = event.relatedTarget;
+            if (nextElement && event.currentTarget.contains(nextElement)) return;
+            event.currentTarget.classList.remove('group-drop-before', 'group-drop-after');
+        }
+
+        async function handleGroupDrop(event) {
+            event.preventDefault();
+            const targetPanel = event.currentTarget;
+            const sourceGroupId = draggingGroupId || event.dataTransfer.getData('text/plain');
+
+            if (!sourceGroupId || sourceGroupId === targetPanel.dataset.groupId) {
+                handleGroupDragEnd();
+                return;
+            }
+
+            const board = document.getElementById('boardSection');
+            const sourcePanel = board.querySelector(`.group-panel[data-group-id="${sourceGroupId}"]`);
+            if (!sourcePanel) {
+                handleGroupDragEnd();
+                return;
+            }
+
+            const placeAfterTarget =
+                targetPanel.classList.contains('group-drop-after') ||
+                (!targetPanel.classList.contains('group-drop-before') &&
+                    event.clientY > (targetPanel.getBoundingClientRect().top + targetPanel.getBoundingClientRect().height / 2));
+
+            if (placeAfterTarget) {
+                board.insertBefore(sourcePanel, targetPanel.nextSibling);
+            } else {
+                board.insertBefore(sourcePanel, targetPanel);
+            }
+
+            await persistGroupOrder();
+            handleGroupDragEnd();
+        }
+
+        function handleGroupDragEnd() {
+            clearGroupDropTargets();
+            document.querySelectorAll('.group-panel.dragging-group').forEach(panel => {
+                panel.classList.remove('dragging-group');
+            });
+            document.body.classList.remove('group-dragging');
+            if (groupDragGhost) {
+                groupDragGhost.remove();
+                groupDragGhost = null;
+            }
+            draggingGroupId = null;
+        }
+
+        async function persistGroupOrder() {
+            const orderedGroupIds = Array.from(document.querySelectorAll('#boardSection .group-panel[data-group-id]'))
+                .map(panel => panel.dataset.groupId);
+
+            const response = await fetch('/api/groups/reorder', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ordered_group_ids: orderedGroupIds })
+            });
+
+            if (!response.ok) {
+                refreshBoard();
+            }
+        }
+        // Render functionality is the KEY component in the client side,
+        // It should be as flexible as possible, and should be able to render any type of data, by following the header of the group, and then render the data accordingly.
+        // --> I need a function that render the table for each schema by following the header of the group, and then render the data accordingly.
+
+       
+        // One specifed function for Loading grand generic field like:
+        // CATAGORY, IMPORTANCE, or any other field that whould rather store in a classic way
+        // For one project the catagories ARE differnt from other project
+        //  --> IN server side should be managed accordinglly
+        // The function gets group and its tasks
+        function createTable(group, groupTasks){
+            console.log('Creating table for group:', group);
+            console.log('Tasks:', groupTasks);
+            return `
+                <section class="group-panel" data-group-id="${group.id}" ondragover="handleGroupDragOver(event)" ondragleave="handleGroupDragLeave(event)" ondrop="handleGroupDrop(event)">
+                    <div class="group-header">
+                        <div>
+                            <div style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                <div class="drag-group-handle" draggable="true" data-group-id="${group.id}" ondragstart="handleGroupDragStart(event)" ondragend="handleGroupDragEnd(event)" title="Drag to reorder">
+                                    <i class="fa-solid fa-grip-vertical"></i>
+                                </div>
+                                <div class="collapse-icon" onclick="toggleGroup(this)">⁐<i class="fa-solid fa-chevron-up"></i></div>
+                                <span class="group-title" contenteditable="true" onblur="updateGroupName(event, '${group.id}', ${JSON.stringify(group.name)})" onkeydown="handleGroupNameKeydown(event)">${group.name}</span>
+                                <div class="small-badge">${group.category}</div>
+                            </div>
+                        </div>
+                        <div class="group-count">${groupTasks.length} tasks</div>
+                    </div>
+                    <div class="task-table">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>${renderTaskHeaders(group, groupTasks)}</tr>
+                            </thead>
+                            <tbody>${renderTaskRows(group, groupTasks, group.id)}</tbody>
+                        </table>
+                    </div>
+                </section>
+            `;
+        }
+        
+
+        function orderTaskKeys(keys) {
+            const orderedKeys = keys.filter(key => key !== 'name');
+            return keys.includes('name') ? ['name', ...orderedKeys] : orderedKeys;
+        }
+
+        function getTaskFieldKeys(tasks) {
+            const keys = [];
+            tasks.forEach(task => {
+                Object.keys(task).forEach(key => {
+                    if (key !== 'id' && key !== 'group_id' && key !== 'type' && !keys.includes(key)) {
+                        keys.push(key);
+                    }
+                });
+            });
+            return keys;
+        }
+
+        function getOrderedGroupKeys(group, tasks) {
+            const groupKeys = Array.isArray(group.fields) ? group.fields : [];
+            const taskKeys = getTaskFieldKeys(tasks);
+            const mergedKeys = [];
+            [...groupKeys, ...taskKeys].forEach(key => {
+                if (!mergedKeys.includes(key)) {
+                    mergedKeys.push(key);
+                }
+            });
+
+            const orderedKeys = orderTaskKeys(mergedKeys);
+            return orderedKeys.length > 0 ? orderedKeys : ['name'];
+        }
+
+        function renderTaskHeaders(group, tasks) {
+            const orderedKeys = getOrderedGroupKeys(group, tasks);
+
+             
+            const headerCells = orderedKeys.map(key => `
+                <th data-field-name="${key}">
+                    <span contenteditable="true" class="field-name-editor" onblur="renameField(event, '${group.id}', '${key}')">${key}</span>
+                    <span class="column-resizer" onmousedown="startColumnResize(event, '${group.id}', '${key}')" ondblclick="autoFitColumn('${group.id}', '${key}')"></span>
+                </th>
+            `).join('');
+            return headerCells + `<th class="text-center"><button class="btn btn-sm btn-outline-secondary" onclick="showFieldInput(this, '${group.id}')">+</button></th>`;
+        }
+
+        function renderTaskRows(group, tasks, groupId) {
+            const orderedKeys = getOrderedGroupKeys(group, tasks);
+            
+            const taskRows = tasks.map(task => `
+                <tr>
+                    ${orderedKeys.map(key => `<td data-field-name="${key}" contenteditable="true" onblur="updateTaskField('${task.id}', '${key}', this.innerText)">${task[key] || ''}</td>`).join('')}
+                </tr>
+            `).join('');
+            
+            // Add blurry row for adding new task
+            const emptyCell = orderedKeys.length > 0 ? `<td colspan="${orderedKeys.length}" class="add-task-btn" onclick="enableNewTaskInput('${groupId}')">+ Add new task</td>` : '<td class="add-task-btn">No fields. Add a field first.</td>';
+            const addTaskRow = `<tr class="blurry-row">${emptyCell}</tr>`;
+            
+            return taskRows + addTaskRow;
+        }
+
+        function getGroupFieldKeys(table) {
+            const keys = Array.from(table.querySelectorAll('thead th[data-field-name]'))
+                .map(header => header.dataset.fieldName)
+                .filter(Boolean);
+            return orderTaskKeys(keys);
+        }
+
+        function getFieldHeaderCell(table, fieldName) {
+            return Array.from(table.querySelectorAll('thead th[data-field-name]'))
+                .find(cell => cell.dataset.fieldName === fieldName);
+        }
+
+        function getFieldBodyCells(table, fieldName) {
+            return Array.from(table.querySelectorAll('tbody td[data-field-name]'))
+                .filter(cell => cell.dataset.fieldName === fieldName);
+        }
+
+        function setColumnWidth(table, groupId, fieldName, width, remember = true) {
+            const normalizedWidth = Math.max(90, Math.round(width));
+            const headerCell = getFieldHeaderCell(table, fieldName);
+            if (!headerCell) return;
+
+            headerCell.style.width = `${normalizedWidth}px`;
+            headerCell.style.minWidth = `${normalizedWidth}px`;
+
+            getFieldBodyCells(table, fieldName).forEach(cell => {
+                cell.style.width = `${normalizedWidth}px`;
+                cell.style.minWidth = `${normalizedWidth}px`;
+            });
+
+            if (remember) {
+                if (!columnWidthsByGroup[groupId]) {
+                    columnWidthsByGroup[groupId] = {};
+                }
+                columnWidthsByGroup[groupId][fieldName] = normalizedWidth;
+            }
+        }
+
+        function applyStoredColumnWidths() {
+            const panels = document.querySelectorAll('.group-panel[data-group-id]');
+            panels.forEach(panel => {
+                const groupId = panel.dataset.groupId;
+                const widths = columnWidthsByGroup[groupId];
+                if (!widths) return;
+
+                const table = panel.querySelector('table');
+                if (!table) return;
+
+                Object.entries(widths).forEach(([fieldName, width]) => {
+                    setColumnWidth(table, groupId, fieldName, width, false);
+                });
+            });
+        }
+
+        function startColumnResize(event, groupId, fieldName) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const panel = document.querySelector(`.group-panel[data-group-id="${groupId}"]`);
+            if (!panel) return;
+
+            const table = panel.querySelector('table');
+            if (!table) return;
+
+            const headerCell = getFieldHeaderCell(table, fieldName);
+            if (!headerCell) return;
+
+            const startX = event.clientX;
+            const startWidth = headerCell.getBoundingClientRect().width;
+            const isRtl = document.documentElement.getAttribute('dir') === 'rtl';
+            document.body.classList.add('resizing-columns');
+
+            const onMouseMove = moveEvent => {
+                const delta = (moveEvent.clientX - startX) * (isRtl ? -1 : 1);
+                setColumnWidth(table, groupId, fieldName, startWidth + delta, true);
+            };
+
+            const onMouseUp = () => {
+                document.body.classList.remove('resizing-columns');
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+
+        function autoFitColumn(groupId, fieldName) {
+            const panel = document.querySelector(`.group-panel[data-group-id="${groupId}"]`);
+            if (!panel) return;
+
+            const table = panel.querySelector('table');
+            if (!table) return;
+
+            const headerCell = getFieldHeaderCell(table, fieldName);
+            if (!headerCell) return;
+
+            const elements = [
+                headerCell.querySelector('.field-name-editor'),
+                ...getFieldBodyCells(table, fieldName)
+            ].filter(Boolean);
+
+            const measure = document.createElement('span');
+            measure.style.position = 'absolute';
+            measure.style.visibility = 'hidden';
+            measure.style.whiteSpace = 'nowrap';
+            measure.style.pointerEvents = 'none';
+            document.body.appendChild(measure);
+
+            let maxWidth = 120;
+            elements.forEach(el => {
+                const text = (el.textContent || '').trim() || ' ';
+                const styles = window.getComputedStyle(el);
+                measure.style.font = styles.font;
+                measure.textContent = text;
+                maxWidth = Math.max(maxWidth, measure.getBoundingClientRect().width + 30);
+            });
+
+            measure.remove();
+            setColumnWidth(table, groupId, fieldName, Math.min(maxWidth, 720), true);
+        }
+
+        async function addNewField(groupId, fieldName) {
+            if (!fieldName) {
+                fieldName = prompt('Enter new field name:');
+            }
+            if (!fieldName) return;
+
+            await fetch(`/api/groups/${groupId}/fields`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field_name: fieldName.trim() })
+            });
+            
+            refreshBoard();
+        }
+
+        function showFieldInput(button, groupId) {
+            const th = button.closest('th');
+            th.innerHTML = `<input type="text" class="form-control form-control-sm" placeholder="Field name" />`;
+            const input = th.querySelector('input');
+            input.focus();
+
+            const finish = async () => {
+                let value = input.value.trim();
+                const existingKeys = getGroupFieldKeys(th.closest('table'));
+
+                if (existingKeys.length === 0) {
+                    value = 'name';
+                }
+
+                if (value) {
+                    await addNewField(groupId, value);
+                }
+                th.innerHTML = `<button class="btn btn-sm btn-outline-secondary" onclick="showFieldInput(this, '${groupId}')">+</button>`;
+            };
+
+            input.addEventListener('blur', finish);
+            input.addEventListener('keydown', async event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    await finish();
+                }
+                if (event.key === 'Escape') {
+                    th.innerHTML = `<button class="btn btn-sm btn-outline-secondary" onclick="showFieldInput(this, '${groupId}')">+</button>`;
+                }
+            });
+        }
+
+        async function updateTaskField(taskId, field, value) {
+            await fetch(`/api/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [field]: value })
+            });
+        }
+
+        function handleGroupNameKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                event.target.blur();
+            }
+        }
+
+        async function updateGroupName(event, groupId, oldGroupName) {
+            const newGroupName = event.target.innerText.trim();
+
+            if (!newGroupName) {
+                event.target.innerText = oldGroupName;
+                return;
+            }
+
+            if (newGroupName === oldGroupName) {
+                return;
+            }
+
+            const response = await fetch(`/api/groups/${groupId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newGroupName })
+            });
+
+            if (!response.ok) {
+                event.target.innerText = oldGroupName;
+                return;
+            }
+
+            refreshBoard();
+        }
+
+        async function renameField(event, groupId, oldFieldName) {
+            const newFieldName = event.target.innerText.trim();
+
+            if (oldFieldName === 'name') {
+                event.target.innerText = 'name';
+                return;
+            }
+            
+            // If the name didn't change, don't do anything
+            if (newFieldName === oldFieldName || newFieldName === '') {
+                event.target.innerText = oldFieldName;
+                return;
+            }
+            
+            // Call the rename endpoint
+            await fetch('/api/rename_field', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    group_id: groupId,
+                    old_field_name: oldFieldName,
+                    new_field_name: newFieldName
+                })
+            });
+            
+            refreshBoard();
+        }
+
+        function enableNewTaskInput(groupId) {
+            const table = document.querySelector(`[data-group-id="${groupId}"] table`);
+            if (!table) return;
+            
+            if (table.querySelector('.new-task-row')) {
+                const firstCell = table.querySelector('.new-task-row .new-task-cell');
+                if (firstCell) {
+                    firstCell.focus();
+                }
+                return;
+            }
+
+            const blurryRow = table.querySelector('.blurry-row');
+            if (!blurryRow) return;
+            
+            const keys = getGroupFieldKeys(table);
+            
+            if (!keys.includes('name')) {
+                keys.unshift('name');
+                console.log('Added "name" field to keys for new task input');
+            }
+            
+            blurryRow.classList.remove('blurry-row');
+            blurryRow.classList.add('new-task-row');
+            blurryRow.dataset.groupId = groupId;
+            blurryRow.innerHTML = keys.map(key => `<td contenteditable="true" class="new-task-cell" data-field="${key}" data-field-name="${key}"></td>`).join('') +
+                '<td></td>';
+
+            applyStoredColumnWidths();
+            
+            const firstCell = blurryRow.querySelector('.new-task-cell');
+            if (firstCell) {
+                firstCell.focus();
+            }
+
+            blurryRow.querySelectorAll('.new-task-cell').forEach(cell => {
+                cell.addEventListener('blur', () => queueInlineNewTaskCommit(blurryRow));
+                cell.addEventListener('keydown', event => handleNewTaskCellKeydown(event, blurryRow));
+            });
+        }
+
+        function handleNewTaskCellKeydown(event, row) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                saveNewTaskInline(row);
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                cancelNewTaskInline(row);
+            }
+        }
+
+        function queueInlineNewTaskCommit(row) {
+            window.setTimeout(() => {
+                if (!row.isConnected) return;
+                if (row.contains(document.activeElement)) return;
+                saveNewTaskInline(row);
+            }, 0);
+        }
+
+        function collectNewTaskRowData(row) {
+            const data = {};
+
+            row.querySelectorAll('.new-task-cell').forEach(cell => {
+                data[cell.dataset.field] = cell.innerText.trim();
+            });
+
+            return data;
+        }
+
+        async function saveNewTaskInline(row) {
+            if (!row || row.dataset.saving === 'true') return;
+
+            const payload = collectNewTaskRowData(row);
+            if (!payload.name) {
+                cancelNewTaskInline(row);
+                return;
+            }
+
+            row.dataset.saving = 'true';
+
+            const response = await fetch('/api/create_task', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    group_id: row.dataset.groupId,
+                    ...payload
+                })
+            });
+
+            row.dataset.saving = 'false';
+
+            if (response.ok) {
+                refreshBoard();
+                return;
+            }
+
+            cancelNewTaskInline(row);
+        }
+
+        function cancelNewTaskInline(row) {
+            if (!row) return;
+
+            const table = row.closest('table');
+            if (!table) return;
+
+            const keys = getGroupFieldKeys(table);
+            const colSpan = Math.max(keys.length, 1);
+
+            row.classList.remove('new-task-row');
+            row.classList.add('blurry-row');
+            row.removeAttribute('data-group-id');
+            row.removeAttribute('data-saving');
+            row.innerHTML = keys.length > 0
+                ? `<td colspan="${colSpan}" class="add-task-btn" onclick="enableNewTaskInput('${table.closest('[data-group-id]').dataset.groupId}')">+ Add new task</td>`
+                : '<td class="add-task-btn">No fields. Add a field first.</td>';
+        }
+
+        // When this next following function, is getting called it ONLY we as user IM 100%
+        // sure I will store the data state, otherwise it keep getting managed in client size by JS 
+        // Create task function supposed to follow sevetral rules:
+        // 1. It should give the ability to insert to field by following the HEADER grouo feilds.
+        // 2. The only SURE thing is the group_id 
+
+
+        
+    </script>
+</body>
+</html>

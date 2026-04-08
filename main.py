@@ -1,6 +1,6 @@
 
 
-from handle_function import create_group_object,create_task_object, remove_fields_from_object,save_object_to_json_file
+from handle_function import create_group_object,create_task_object,load_json_file, remove_fields_from_object,save_object_to_json_file
 from inner_function import reset_db
 
 
@@ -10,6 +10,12 @@ g1 = create_group_object("Group 2", description="This is the second group",categ
 g1_id = g1["id"]
 g1 = remove_fields_from_object(g1, "id")
 save_object_to_json_file(g1, g1_id, 'group.json')
+
+g1 = create_group_object("Group 1", note="I hate SOME PEOPLE")
+g1_id = g1["id"]
+g1 = remove_fields_from_object(g1, "id")
+save_object_to_json_file(g1, g1_id, 'group.json')
+
 
 
 
